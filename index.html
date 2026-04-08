@@ -2,109 +2,138 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ROBOT TUẦN TRA 2026 - DUY PRO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Robot Thám Hiểm - Bản đồ + Camera + Điều khiển</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
-        :root { --bg: #0d1117; --card: #161b22; --accent: #3fb950; --danger: #ff4757; --warning: #f39c12; --text: #c9d1d9; }
-        * { box-sizing: border-box; user-select: none; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; display: flex; flex-direction: column; align-items: center; }
-        header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .indicator { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; border: 1px solid currentColor; display: flex; align-items: center; gap: 6px; background: #00000055; }
-        .on { color: var(--accent); background: #23863622; }
-        .off { color: var(--danger); background: #da363322; }
-        .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-        .camera-wrapper { width: 100%; max-width: 900px; aspect-ratio: 16 / 9; background: #000; border-radius: 20px; overflow: hidden; border: 2px solid #30363d; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .camera-wrapper iframe { width: 100%; height: 100%; border: none; }
-        .sensor-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 15px; width: 100%; max-width: 900px; }
-        .card { background: var(--card); padding: 12px; border-radius: 14px; text-align: center; border: 1px solid #30363d; }
-        .card div { font-size: 0.7rem; color: #8b949e; margin-bottom: 4px; }
-        .card span { font-size: 1.5rem; font-weight: bold; }
-        .alert-bar { width: 100%; max-width: 900px; margin: 12px 0; display: flex; gap: 12px; flex-wrap: wrap; }
-        .alert { flex: 1; padding: 10px; border-radius: 12px; font-weight: bold; text-align: center; display: none; }
-        .fire-alert { background: #ff4755cc; color: white; border-left: 6px solid red; }
-        .gas-alert { background: #f39c12cc; color: black; border-left: 6px solid orange; }
-        .log-box { background: #010409; border: 1px solid #30363d; border-radius: 12px; padding: 10px; font-family: monospace; font-size: 0.8rem; color: var(--accent); height: 110px; overflow-y: auto; margin-top: 15px; width: 100%; max-width: 900px; }
-        .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; width: 100%; max-width: 320px; }
-        button { background: #21262d; border: none; color: white; padding: 20px; border-radius: 30px; font-size: 1.8rem; cursor: pointer; touch-action: manipulation; transition: 0.05s linear; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        button:active { background: var(--accent); transform: scale(0.94); }
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 1300px; width: 100%; }
+        .row { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; justify-content: center; }
+        .card { background: #161b22; border-radius: 16px; padding: 15px; border: 1px solid #30363d; }
+        .sensor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; flex: 1; }
+        .sensor { text-align: center; }
+        .sensor-value { font-size: 1.8rem; font-weight: bold; color: #3fb950; }
+        .camera-box { width: 640px; height: 360px; background: #000; border-radius: 16px; overflow: hidden; border: 2px solid #3fb950; }
+        .camera-box iframe { width: 100%; height: 100%; border: none; }
+        .map-container { width: 500px; height: 500px; background: #010409; border-radius: 12px; overflow: hidden; }
+        canvas { width: 100%; height: 100%; background: #1a1f2e; }
+        .controls { display: flex; flex-direction: column; gap: 12px; min-width: 200px; }
+        button { background: #21262d; border: none; color: white; padding: 12px 20px; border-radius: 40px; font-size: 1rem; cursor: pointer; transition: 0.1s; font-weight: bold; }
+        button:active { transform: scale(0.96); }
+        .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+        .dpad button { padding: 15px; font-size: 1.4rem; }
         .btn-stop { background: #8e2a2a; }
-        .btn-group { width: 100%; max-width: 350px; display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
-        .btn-action { padding: 16px; border-radius: 40px; font-weight: bold; font-size: 1rem; border: none; cursor: pointer; transition: 0.2s; background: #2d3748; color: white; }
-        .btn-teach { background: #8e44ad; }
-        .btn-play { background: var(--accent); }
-        footer { font-size: 0.7rem; margin: 20px; color: #555; }
+        .btn-auto { background: #238636; }
+        .btn-manual { background: #1f6feb; }
+        .log-box { background: #010409; border-radius: 12px; padding: 10px; height: 150px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; }
+        .alert-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .alert { padding: 8px 15px; border-radius: 20px; font-weight: bold; display: none; }
+        .alert-fire { background: #ff4755cc; color: white; }
+        .alert-gas { background: #f39c12cc; color: black; }
+        .alert-tilt { background: #8e44adcc; color: white; }
+        @media (max-width: 700px) {
+            .camera-box { width: 100%; height: auto; aspect-ratio: 16/9; }
+            .map-container { width: 100%; height: auto; aspect-ratio: 1/1; }
+        }
     </style>
 </head>
 <body>
-
-<header>
-    <h2 style="color: var(--accent); margin: 0;">🤖 ROBOT TUẦN TRA</h2>
-    <div style="display:flex; gap:8px;">
-        <div id="mqttStatus" class="indicator off"><div class="dot"></div> MQTT</div>
-        <div id="robotStatus" class="indicator off"><div class="dot"></div> ROBOT</div>
+<div class="container">
+    <h2 style="color:#3fb950">🤖 ROBOT THÁM HIỂM - BẢN ĐỒ GRID + CAMERA</h2>
+    <div class="alert-bar">
+        <div id="fireAlert" class="alert alert-fire">🔥 PHÁT HIỆN LỬA</div>
+        <div id="gasAlert" class="alert alert-gas">⚠️ KHÍ GAS CAO</div>
+        <div id="tiltAlert" class="alert alert-tilt">📐 XE BỊ NGHIÊNG</div>
     </div>
-</header>
 
-<div class="alert-bar">
-    <div id="fireAlert" class="alert fire-alert">🔥 PHÁT HIỆN LỬA! ĐANG XỬ LÝ... 🔥</div>
-    <div id="gasAlert" class="alert gas-alert">⚠️ NỒNG ĐỘ KHÍ GAS CAO! ⚠️</div>
+    <div class="row">
+        <div class="sensor-grid card">
+            <div class="sensor"><div>🌡️ Nhiệt độ MPU</div><div class="sensor-value" id="temp">--</div>°C</div>
+            <div class="sensor"><div>💨 Nồng độ khí gas</div><div class="sensor-value" id="gas">--</div></div>
+            <div class="sensor"><div>📡 Góc Yaw</div><div class="sensor-value" id="yaw">--</div>°</div>
+            <div class="sensor"><div>📏 Cản trước</div><div class="sensor-value" id="distF">--</div>cm</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="camera-box card">
+            <!-- Thay YOUR_NINJA_ID bằng ID thật từ VDO.Ninja -->
+            <iframe src="https://vdo.ninja/?view=YOUR_NINJA_ID&autoplay=1&muted=1&clean&style=1" allow="autoplay; camera; microphone"></iframe>
+        </div>
+        <div class="map-container card">
+            <canvas id="mapCanvas" width="500" height="500"></canvas>
+        </div>
+        <div class="controls card">
+            <div class="dpad">
+                <div></div><button id="btnF" onpointerdown="sendCmd('F')" onpointerup="sendCmd('S')" onpointerleave="sendCmd('S')">▲</button><div></div>
+                <button id="btnL" onpointerdown="sendCmd('L')" onpointerup="sendCmd('S')" onpointerleave="sendCmd('S')">◀</button>
+                <button id="btnStop" class="btn-stop" onclick="sendCmd('S')">■</button>
+                <button id="btnR" onpointerdown="sendCmd('R')" onpointerup="sendCmd('S')" onpointerleave="sendCmd('S')">▶</button>
+                <div></div><button id="btnB" onpointerdown="sendCmd('B')" onpointerup="sendCmd('S')" onpointerleave="sendCmd('S')">▼</button><div></div>
+            </div>
+            <button id="btnAuto" class="btn-auto" onclick="sendCmd('A')">🤖 CHẾ ĐỘ TỰ HÀNH</button>
+            <button id="btnManual" class="btn-manual" onclick="sendCmd('M')">🕹️ CHẾ ĐỘ ĐIỀU KHIỂN TAY</button>
+            <button id="btnClear" class="btn-manual" onclick="sendCmd('C')">🔄 CLEAR CẢNH BÁO NGHIÊNG</button>
+        </div>
+    </div>
+
+    <div class="log-box card" id="sysLog">> Hệ thống sẵn sàng. Đang kết nối MQTT...</div>
+    <footer style="font-size:0.7rem; margin-top:15px; text-align:center;">⚡ Robot tự hành lập bản đồ | Camera IP VDO.Ninja | Điều khiển qua MQTT</footer>
 </div>
-
-<div class="camera-wrapper">
-    <!-- Thay YOUR_NINJA_ID bằng ID thật của bạn -->
-    <iframe src="https://vdo.ninja/?view=YOUR_NINJA_ID&autoplay=1&muted=1&clean&style=1"></iframe>
-</div>
-
-<div class="sensor-grid">
-    <div class="card"><div>🌡️ Nhiệt độ MCU</div><span id="temp">--</span>°C</div>
-    <div class="card"><div>💨 Nồng độ khí gas</div><span id="gas">--</span></div>
-    <div class="card"><div>📡 Góc Yaw</div><span id="yaw">--</span>°</div>
-</div>
-
-<div class="log-box" id="sysLog">> Hệ thống sẵn sàng. Kết nối MQTT...</div>
-
-<div class="dpad">
-    <div></div>
-    <button onpointerdown="sendCmd('F')" onpointerup="sendCmd('S')" onpointerleave="sendCmd('S')">▲</button>
-    <div></div>
-    <button onpointerdown="sendCmd('L')" onpointerup="sendCmd('S')" onpointerleave="sendCmd('S')">◀</button>
-    <button class="btn-stop" onclick="sendCmd('S')">■</button>
-    <button onpointerdown="sendCmd('R')" onpointerup="sendCmd('S')" onpointerleave="sendCmd('S')">▶</button>
-    <div></div>
-    <button onpointerdown="sendCmd('B')" onpointerup="sendCmd('S')" onpointerleave="sendCmd('S')">▼</button>
-    <div></div>
-</div>
-
-<div class="btn-group">
-    <button id="teachBtn" onclick="toggleTeach()" class="btn-action btn-teach">📝 CHẾ ĐỘ DẠY: TẮT</button>
-    <button onclick="sendCmd('P')" class="btn-action btn-play">▶ PHÁT LẠI LỘ TRÌNH</button>
-</div>
-<footer>⚡ Nhấn giữ để di chuyển, thả để dừng</footer>
 
 <script>
-    // Cấu hình MQTT (dùng broker public HIVEMQ WebSocket 8884 SSL)
+    // ========== CẤU HÌNH MQTT ==========
     const client = new Paho.MQTT.Client("broker.hivemq.com", 8884, "web_" + Math.random().toString(36).substr(2, 8));
-    let lastSeen = 0;
-    let teachActive = false;
+    let mapData = { robotX: 12, robotY: 12, grid: [] };
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d");
+    const cellW = canvas.width / 25, cellH = canvas.height / 25;
 
-    // Cập nhật trạng thái kết nối
-    function updateStatus(id, isOnline, text) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.className = isOnline ? "indicator on" : "indicator off";
-        el.innerHTML = `<div class="dot"></div> ${text}`;
+    // Vẽ bản đồ grid
+    function drawMap() {
+        if (!mapData.grid || mapData.grid.length === 0) {
+            // Vẽ lưới trống
+            ctx.fillStyle = "#21262d";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "#30363d";
+            for (let i = 0; i <= 25; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellW, 0);
+                ctx.lineTo(i * cellW, canvas.height);
+                ctx.stroke();
+                ctx.moveTo(0, i * cellH);
+                ctx.lineTo(canvas.width, i * cellH);
+                ctx.stroke();
+            }
+            return;
+        }
+        for (let i = 0; i < 25; i++) {
+            for (let j = 0; j < 25; j++) {
+                let val = mapData.grid[i * 25 + j];
+                if (val === '1') ctx.fillStyle = "#2ea043";      // đã đi qua
+                else if (val === '2') ctx.fillStyle = "#da3633"; // vật cản
+                else ctx.fillStyle = "#21262d";                  // chưa biết
+                ctx.fillRect(j * cellW, i * cellH, cellW - 1, cellH - 1);
+            }
+        }
+        // Vẽ vị trí robot
+        ctx.fillStyle = "#f39c12";
+        let rx = mapData.robotY * cellW;
+        let ry = mapData.robotX * cellH;
+        ctx.beginPath();
+        ctx.arc(rx + cellW / 2, ry + cellH / 2, cellW / 3, 0, 2 * Math.PI);
+        ctx.fill();
     }
 
-    // Gửi lệnh điều khiển
+    // Gửi lệnh MQTT
     function sendCmd(cmd) {
         if (client.isConnected()) {
-            const message = new Paho.MQTT.Message(cmd);
-            message.destinationName = "duy_robot_2026/control";
-            client.send(message);
-            console.log("Sent:", cmd);
+            const msg = new Paho.MQTT.Message(cmd);
+            msg.destinationName = "duy_robot_2026/control";
+            client.send(msg);
         } else {
-            addLog("⚠️ Mất kết nối MQTT, không gửi được lệnh");
+            addLog("❌ Mất kết nối MQTT");
         }
     }
 
@@ -115,64 +144,50 @@
         p.innerText = "> " + msg;
         logDiv.appendChild(p);
         logDiv.scrollTop = logDiv.scrollHeight;
-        if (logDiv.children.length > 15) logDiv.removeChild(logDiv.children[0]);
+        if (logDiv.children.length > 20) logDiv.removeChild(logDiv.children[0]);
     }
 
-    // Xử lý tin nhắn đến
+    // Xử lý tin nhắn MQTT đến
     client.onMessageArrived = (msg) => {
         const topic = msg.destinationName;
         const payload = msg.payloadString;
-        if (topic.includes("status")) {
-            lastSeen = Date.now();
-            updateStatus("robotStatus", true, "ROBOT: ON");
-        }
-        if (topic.includes("temp")) document.getElementById("temp").innerText = payload;
-        if (topic.includes("gas")) document.getElementById("gas").innerText = payload;
-        if (topic.includes("yaw")) document.getElementById("yaw").innerText = payload;
-        if (topic.includes("log")) addLog(payload);
-        
-        // Cảnh báo lửa
+        if (topic.includes("duy_robot_2026/temp")) document.getElementById("temp").innerText = payload;
+        if (topic.includes("duy_robot_2026/gas")) document.getElementById("gas").innerText = payload;
+        if (topic.includes("duy_robot_2026/yaw")) document.getElementById("yaw").innerText = payload;
+        if (topic.includes("duy_robot_2026/distF")) document.getElementById("distF").innerText = payload;
         if (topic.includes("alert/fire")) {
-            const fireDiv = document.getElementById("fireAlert");
-            if (payload === "1") fireDiv.style.display = "block";
-            else fireDiv.style.display = "none";
+            const el = document.getElementById("fireAlert");
+            el.style.display = payload === "1" ? "block" : "none";
+            if (payload === "1") addLog("🔥 Cảnh báo: PHÁT HIỆN LỬA!");
         }
-        // Cảnh báo gas
         if (topic.includes("alert/gas")) {
-            const gasDiv = document.getElementById("gasAlert");
-            if (payload === "1") gasDiv.style.display = "block";
-            else gasDiv.style.display = "none";
+            const el = document.getElementById("gasAlert");
+            el.style.display = payload === "1" ? "block" : "none";
+            if (payload === "1") addLog("⚠️ Cảnh báo: NỒNG ĐỘ GAS CAO!");
+        }
+        if (topic.includes("alert/tilt")) {
+            const el = document.getElementById("tiltAlert");
+            el.style.display = payload === "1" ? "block" : "none";
+            if (payload === "1") addLog("📐 Cảnh báo: XE BỊ NGHIÊNG! Dừng mọi hoạt động.");
+        }
+        if (topic.includes("duy_robot_2026/log")) addLog(payload);
+        if (topic.includes("duy_robot_2026/map")) {
+            try {
+                mapData = JSON.parse(payload);
+                drawMap();
+            } catch (e) {}
         }
     };
-
-    // Kiểm tra robot offline
-    setInterval(() => {
-        if (Date.now() - lastSeen > 6000) {
-            updateStatus("robotStatus", false, "ROBOT: OFF");
-            addLog("❌ Mất tín hiệu từ robot");
-        }
-    }, 3000);
-
-    // Toggle chế độ dạy (gửi T)
-    function toggleTeach() {
-        sendCmd('T');
-        teachActive = !teachActive;
-        const btn = document.getElementById("teachBtn");
-        btn.innerText = teachActive ? "📝 CHẾ ĐỘ DẠY: BẬT" : "📝 CHẾ ĐỘ DẠY: TẮT";
-        addLog(teachActive ? "Bắt đầu học lộ trình" : "Kết thúc học lộ trình");
-    }
 
     // Kết nối MQTT
     client.connect({
         useSSL: true,
         timeout: 10,
         onSuccess: () => {
-            updateStatus("mqttStatus", true, "MQTT: ON");
             client.subscribe("duy_robot_2026/#");
-            addLog("✅ Đã kết nối MQTT broker");
+            addLog("✅ Kết nối MQTT thành công (HiveMQ)");
         },
         onFailure: (err) => {
-            updateStatus("mqttStatus", false, "MQTT: OFF");
             addLog("❌ Không thể kết nối MQTT, thử lại sau 5s");
             setTimeout(() => location.reload(), 5000);
         }
